@@ -20,7 +20,7 @@ using INotes.API.Results;
 namespace INotes.API.Controllers
 {
     [Authorize]
-    [RoutePrefix("api/Account")]
+    [RoutePrefix("api/Account")]//ulaşılırken hepsinin başına bunu ekle
     public class AccountController : ApiController
     {
         private const string LocalLoginProvider = "Local";
@@ -321,7 +321,7 @@ namespace INotes.API.Controllers
         // POST api/Account/Register
         [AllowAnonymous]
         [Route("Register")]
-        public async Task<IHttpActionResult> Register(RegisterBindingModel model)
+        public async Task<IHttpActionResult> Register(RegisterBindingModel model)//post alıyor bunu
         {
             if (!ModelState.IsValid)
             {
