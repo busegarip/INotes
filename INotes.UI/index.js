@@ -2,6 +2,64 @@
 
 var app = angular.module("myApp", ["ngRoute"]);
 
+
+
+app.controller("indexCtrl", function ($scope, $window, $http) {
+
+    $scope.token = function () {
+        if ($window.sessionStorage.token) {
+            return $window.sessionStorage.token;
+        }
+        if ($window.localStorage.token) {
+            return $window.localStorage.token;
+        }
+        return null;
+    };
+
+    $scope.requestConfig = function () {
+        return {
+            headers: {
+                Authorization: "Bearer " + $scope.token()
+            }
+        }
+    };
+
+    $scope.checkAuthentication = function () {
+
+        // giriş yapıldı mı?
+        if (!$scope.token()) {
+            $scope.isAuthenticated = false;
+            $scope.loggedInUserEmail = null;
+            return false;
+        }
+
+        $http.get(apiUrl + "api/Account/UserInfo", $scope.requestConfig()).then(
+            function (response) {
+                $scope.loggedInUserEmail = response.data.Email;
+                $scope.isAuthenticated = true;
+            },
+            function (response) {
+                $scope.isAuthenticated = false;
+                $scope.loggedInUserEmail = null;
+            }
+        );
+    };
+
+    $scope.setLoggedInUser = function (email) {
+        if (email) {
+            $scope.isAuthenticated = true;
+            $scope.loggedInUserEmail = email;
+        }
+        else {
+            $scope.isAuthenticated = false;
+            $scope.loggedInUserEmail = null;
+        }
+    };
+
+    $scope.checkAuthentication();
+});
+
+
 app.config(function ($routeProvider) {
     $routeProvider
         .when("/", {
@@ -18,12 +76,75 @@ app.config(function ($routeProvider) {
         });
 });
 
-app.controller("mainCtrl", function ($scope) {
-    $scope.message = "Anasayfadasınız..."
+app.controller("mainCtrl", function ($scope, $http, $window, $location) {
+
+    $scope.notes = [];
+
+    $scope.loadNotes = function () {
+        $http.get(apiUrl + "api/Notes/GetNotes", $scope.requestConfig()).then(
+            function (response) {
+                console.log(response.data);
+            }
+        );
+    };
+    if ($scope.isAuthenticated) {
+        $scope.loadNotes();
+    }
 });
 
-app.controller("loginCtrl", function ($scope) {
-    $scope.message = "Giriş yap..."
+app.controller("loginCtrl", function ($scope, $http, $location, $timeout, $httpParamSerializer, $window) {
+    $scope.errors = [];
+    $scope.successMessage = "";
+
+    $scope.hasErrors = function () {
+        return $scope.errors.length > 0;
+    };
+
+    $scope.user = {
+        grant_type: "password",
+        username: "buse@gmail.com",
+        password: "Ankara1."
+    };
+
+    $scope.isRememberMe = false;
+
+    $scope.login = function (e) {
+        e.preventDefault();
+
+        $scope.errors = [];
+        $scope.successMessage = "";
+
+        $http.post(apiUrl + "Token", $httpParamSerializer($scope.user)).then(
+            function (response) { // başarı durumunda
+                var token = response.data.access_token;
+
+                // varsa önce mevcut tokenları temizle
+                if ($window.localStorage.token)
+                    $window.localStorage.removeItem("token");
+                if ($window.sessionStorage.token)
+                    $window.sessionStorage.removeItem("token");
+
+                if ($scope.isRememberMe) {
+                    $window.localStorage.token = token;
+                }
+                else {
+                    $window.sessionStorage.token = token;
+                }
+
+                $scope.setLoggedInUser($scope.user.username);
+
+                $scope.successMessage = "Başarıyla giriş yaptınız. Şimdi uygulamaya yönlendiriliyorsunuz..";
+
+                $timeout(function () {
+                    $location.path("/");
+                }, 1000);
+            },
+            function (response) { // hata durumunda
+                if (response.data.error_description) {
+                    $scope.errors.push(response.data.error_description);
+                }
+            });
+    };
 });
 
 app.controller("registerCtrl", function ($scope, $http) {
@@ -32,7 +153,7 @@ app.controller("registerCtrl", function ($scope, $http) {
 
     $scope.user = {
         Email: "buse@gmail.com",
-        Password:"Ankara1.",
+        Password: "Ankara1.",
         ConfirmPassword: "Ankara1."
     };
 
@@ -41,20 +162,21 @@ app.controller("registerCtrl", function ($scope, $http) {
         e.preventDefault();
         $http.post(apiUrl + "api/Account/Register", $scope.user)
             .then(function (response) {//başarı durumunda hen çalışır
-            $scope.user = {
-                Email: "",
-                Password: "",
-                ConfirmPassword: ""
-            };
-            $scope.successMessage = "Kayıt başarılı. Şimdi giriş sayfasından giriş yapabilirisiniz.";
-        }, function (response) {
-            $scope.errors = getErrors(response.data.ModelState);
-        });
+                $scope.user = {
+                    Email: "",
+                    Password: "",
+                    ConfirmPassword: ""
+                };
+                $scope.successMessage = "Kayıt başarılı. Şimdi giriş sayfasından giriş yapabilirisiniz.";
+            }, function (response) {
+                $scope.errors = getErrors(response.data.ModelState);
+            });
     };
 
     $scope.hasErrors = function () {
         return $scope.errors.length > 0;//dizide eleman varsa
     }
+
 });
 function getErrors(modelState) {
     var errors = [];
