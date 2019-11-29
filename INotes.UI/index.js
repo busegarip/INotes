@@ -4,7 +4,7 @@ var app = angular.module("myApp", ["ngRoute"]);
 
 
 
-app.controller("indexCtrl", function ($scope, $window, $http) {
+app.controller("indexCtrl", function ($scope, $window, $http, $location) {//hepsinde ortak olanlar burada 
 
     $scope.token = function () {
         if ($window.sessionStorage.token) {
@@ -56,6 +56,20 @@ app.controller("indexCtrl", function ($scope, $window, $http) {
         }
     };
 
+    $scope.logout = function (e) {
+        e.preventDefault();
+        $scope.setLoggedInUser(null);
+
+        $http.post(apiUrl + "api/Account/Logout", null, $scope.requestConfig()).then(
+            function (response) {
+
+            }
+        );
+        $window.sessionStorage.removeItem("token");
+        $window.localStorage.removeItem("token");
+        $location.path("login");
+    };
+
     $scope.checkAuthentication();
 });
 
@@ -77,19 +91,72 @@ app.config(function ($routeProvider) {
 });
 
 app.controller("mainCtrl", function ($scope, $http, $window, $location) {
+    if (!$scope.token()) {
+        $location.path("login");
+        return;
+    }
 
+    $scope.activeNote = {//ng model ile bunları textbox a ve t4xtarea ya bağlamamız lazım
+        Id: 0,
+        Title: "",
+        Content: ""
+    };
+
+    $scope.isLoading = true;
     $scope.notes = [];
 
     $scope.loadNotes = function () {
         $http.get(apiUrl + "api/Notes/GetNotes", $scope.requestConfig()).then(
             function (response) {
-                console.log(response.data);
+                $scope.notes = response.data;
+                $scope.isLoading = false;
+            },
+            function (response) {//girişe atar
+                if (response.status == 401) {
+                    $location.path("login");
+                }
             }
         );
     };
-    if ($scope.isAuthenticated) {
-        $scope.loadNotes();
-    }
+
+    $scope.selectedNote = null;
+    $scope.showNote = function (e, note) {
+        e.preventDefault();
+        $scope.activeNote = angular.copy(note);//aslını kaydete basınca değiştirmemiz lazım
+        $scope.selectedNote = note;
+    };
+
+    $scope.saveNote = function (e) {
+        e.preventDefault();
+
+        if ($scope.activeNote.Id !== 0) {//boyle olduğunda türe de bakıyor c# daki eşit değildirin tam karşılığı bu javascriptte bu şekilde ==== de aynı şekilde
+            $http.put(apiUrl + "api/Notes/PutNote/" + $scope.activeNote.Id, $scope.activeNote, $scope.requestConfig()).then(
+                function (response) {
+                    console.log(response.data);
+                    $scope.selectedNote.Title = response.data.Title;//değişeceğini tahmin ettiklerimizi güncelledik.
+                    $scope.selectedNote.Content = response.data.Content;
+                    $scope.selectedNote.ModifiedTime = response.data.ModifiedTime;
+                },
+                function (response) {
+
+                },
+            );
+        }
+    };
+
+    $scope.deleteNote = function (e) {
+
+    };
+
+    $scope.noteActiveClass = function (id) {
+        if ($scope.selectedNote == null) {
+            return "";
+        }
+        return $scope.selectedNote.Id == id ? "active" : "";
+    };
+
+    $scope.loadNotes();
+
 });
 
 app.controller("loginCtrl", function ($scope, $http, $location, $timeout, $httpParamSerializer, $window) {
