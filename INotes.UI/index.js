@@ -1,5 +1,5 @@
-﻿var apiUrl = "http://localhost:64538/";
-
+﻿//var apiUrl = "http://localhost:64538/";
+var apiUrl = "https://inoteapi.kod.fun/";  //hocanın apisi ile girmeyi denedik.
 var app = angular.module("myApp", ["ngRoute"]);
 
 
@@ -209,8 +209,8 @@ app.controller("loginCtrl", function ($scope, $http, $location, $timeout, $httpP
 
     $scope.user = {
         grant_type: "password",
-        username: "buse@gmail.com",
-        password: "Ankara1."
+        username: "",
+        password: ""
     };
 
     $scope.isRememberMe = false;
@@ -259,9 +259,9 @@ app.controller("registerCtrl", function ($scope, $http) {
     $scope.successMessage = "";
 
     $scope.user = {
-        Email: "buse@gmail.com",
-        Password: "Ankara1.",
-        ConfirmPassword: "Ankara1."
+        Email: "",
+        Password: "",
+        ConfirmPassword: ""
     };
 
     $scope.register = function (e) {
